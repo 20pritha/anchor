@@ -6,38 +6,38 @@ People with mild cognitive impairment (MCI) or early-stage dementia lose the eve
 
 ## The user
 
-Two users, one device:
+Two users, one laptop:
 
 - **The person with MCI / early dementia** — the primary user. Interacts by voice and by pointing the camera at things ("where do I put this?", "did I take my pills?"). Needs answers that are calm, short, and never make them feel surveilled or diminished.
-- **The caregiver** — secondary user. Seeds routines, medication schedules, and important people; reviews what happened; gets gentle nudges. May be co-located or remote.
+- **The caregiver** — secondary user. Seeds routines, medication schedules, and important people; reviews what happened; gets gentle nudges. May be co-located or remote, accessing via a shared web interface.
 
 ## What Anchor does
 
 Anchor is an ambient memory companion that:
 
-1. **Remembers the person's world** — people, medications, routines, places, and episodic events ("you had tea with Emily at 4pm") — as a structured, queryable memory on the device.
+1. **Remembers the person's world** — people, medications, routines, places, and episodic events ("you had tea with Emily at 4pm") — as a structured, queryable memory store on the laptop.
 2. **Answers in the moment** — "Did I take my morning pills?", "Who is coming today?", "Where are my keys?" — from local memory, by voice, with no network round-trip in the common case.
-3. **Perceives when asked** — trigger-based (not always-on): the user invokes the camera/mic, and Anchor looks/listens and reasons about the scene.
+3. **Perceives when asked** — trigger-based (not always-on): the user invokes the camera/mic, and Anchor looks/listens and reasons about the scene using on-device Gemma 4.
 4. **Preserves dignity** — sensitive information is filtered before storage, perception is trigger-based rather than continuous surveillance, and the tone is supportive, never corrective-scolding.
 
 ## The differentiator
 
-Everything essential runs **on the device**. Cloud (Gemini Live) is invoked only for genuinely real-time streaming interaction or reasoning that exceeds the on-device model. This is the pitch's backbone: a memory companion for a vulnerable population that keeps their life on their own phone by default.
+Everything essential runs **on the laptop**. Cloud (Gemini Live + Gemini Embeddings API) is invoked only for genuinely real-time streaming interaction, multimodal embeddings, or reasoning that exceeds the local model. The core pitch: a memory companion for a vulnerable population that keeps their life on their own device by default.
 
 ## Hackathon scope (what we build vs. defer)
 
 **In scope for the demo:**
 
-- On-device Gemma 4 (E4B) doing intent routing, PII filtering, memory scoring, and answering from memory.
-- KoreDB memory store (graph + vector) with seeded synthetic history so the demo doesn't start empty.
+- On-device Gemma 4 (via Ollama + MLX on MacBook) doing intent routing, PII filtering, memory scoring, and answering from memory.
+- Neo4j graph store (people, medications, routines, places, objects) + ChromaDB vector store (episodic memory) with seeded synthetic history so the demo doesn't start empty.
 - One tight, scripted trigger-based scenario that exercises both the local path and the cloud (Gemini Live) path.
-- Voice output via Android native TTS + on-screen text.
+- Voice input/output via Web Speech API + on-screen text in a Next.js browser UI.
 
 **Explicitly deferred (parking lot, not for demo):**
 
 - Full consent/oversight UX (flagged as a real product concern — see gaps doc §8).
 - Pitch/positioning polish.
-- Production model packaging/OTA of the multi-GB model file (use a pre-provisioned device for demo).
+- Production deployment / packaging beyond the hackathon device.
 - Continuous ambient perception (we do trigger-based only).
 
 ## Success criteria for the build

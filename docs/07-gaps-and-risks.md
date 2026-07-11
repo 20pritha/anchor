@@ -1,60 +1,76 @@
 # 07 — Gaps, Fixes & Risks
 
-Review of the plan from the transcript against verified facts (July 2026). Each item: what the gap is, the fix, and residual risk.
+Review of the original Android plan against the laptop/Next.js pivot, plus verified facts (July 2026).
 
-## Corrections to earlier assumptions
+## Corrections from the Android→MacBook pivot
 
-### G1 — "Gemma 4 only supports text" is wrong (it's multimodal)
-**Fix:** Gemma 4 (incl. on-device E2B/E4B) accepts **text + image input, with audio input on the small models**; output is text only. This is upside: single-shot perception ("what is this object?") can run on-device, reducing cloud calls and latency. Voice output still needs TTS because output is text-only.
-**Impact:** Routing gains a "still-frame → local, live-stream → cloud" branch. Local-first story gets stronger.
-**Residual risk:** On-device multimodal inference is heavier than text-only; measure latency/memory on the Pixel 10 for image input specifically.
+### G1 — Platform: Android → MacBook + Next.js
+**Change:** The entire platform shifted from a single Android app (Kotlin, Jetpack Compose, LiteRT-LM) to a MacBook-hosted Next.js web app (TypeScript, React, Ollama + MLX).
+**Impact:** The app runs in a browser on the laptop. Camera/mic/speech are browser APIs. Gemma 4 runs via Ollama with MLX acceleration instead of LiteRT-LM.
+**Residual risk:** Web Speech API quality (SpeechRecognition accuracy, SpeechSynthesis naturalness) may differ from native Android. Mitigate by testing early on the demo MacBook.
 
-### G2 — On-device runtime should be LiteRT-LM, not MediaPipe LLM Inference
-**Fix:** The MediaPipe `tasks-genai` LLM Inference API is in **maintenance-only** mode in 2026; Google's active edge runtime is **LiteRT-LM**, which is also Gemma 4's documented on-device path. Target LiteRT-LM in the adapter.
-**Impact:** The custom adapter wraps a LiteRT-LM session (not a MediaPipe session). AI Edge Gallery already exercises this runtime class, so your "it runs on my Pixel 10" evidence still holds.
-**Residual risk:** Slightly less tutorial content for LiteRT-LM's newest APIs; budget reading time.
+### G2 — LLM runtime: LiteRT-LM → Ollama + MLX
+**Change:** Originally on-device Gemma 4 via LiteRT-LM (Android). Now Gemma 4 runs via Ollama with the MLX backend on Apple Silicon.
+**Impact:** Easier setup (`brew install ollama; ollama pull gemma4:12b`), better performance on Mac (MLX is Apple's optimized ML framework), and an OpenAI-compatible API for integration.
+**Residual risk:** Ollama's Gemma 4 tool-calling support must be verified on the target Mac. Test a raw function-call round-trip early (day 0).
+
+### G3 — Orchestration: ADK for Android → Vercel AI SDK
+**Change:** Previously ADK for Android (Kotlin) with a custom `Model` adapter. Now Vercel AI SDK (TypeScript) with the built-in Ollama provider.
+**Impact:** Simpler architecture — no custom adapter needed. The AI SDK handles streaming, tool calling, and multi-turn conversations natively.
+**Residual risk:** The Vercel AI SDK's Ollama provider abstracts tool calling; verify it handles Gemma 4's tool format correctly (Gemma 4 uses the OpenAI-compatible format which Ollama exposes).
+
+### G4 — Memory store: KoreDB → Neo4j + ChromaDB
+**Change:** Previously a single KoreDB instance (graph + vector in one Kotlin DB). Now two services: Neo4j (graph) + ChromaDB (vector).
+**Impact:** Two running services on the MacBook instead of one embedded DB. More deployment overhead but more mature, well-documented databases.
+**Residual risk:** Two services means more startup steps and memory footprint. Automate startup with a single script (`docker-compose up` or a launch script). Monitor total RAM with Ollama + Neo4j + ChromaDB simultaneously.
+
+### G5 — Embeddings: EmbeddingGemma → Gemini Embedding API
+**Change:** Previously on-device EmbeddingGemma (no network needed). Now Google Gemini Embedding API (`gemini-embedding-2`).
+**Impact:** Embedding generation now requires internet. This is acceptable because embeddings are generated on the **async write path** — the user never waits for them during a query.
+**Residual risk:** Demo venue Wi-Fi must work. If the network is down, memory writes still complete (text stored in Neo4j) but vector embeddings will be queued/failed. Have a fallback: skip embedding and rely on graph-only queries for the demo.
+
+### G6 — Speech: Android native → Web Speech API
+**Change:** Android TextToSpeech + SpeechRecognizer replaced by browser Web Speech API.
+**Impact:** Zero-dependency speech I/O in the browser. Quality varies by browser/OS — Chrome on macOS provides the best results.
+**Residual risk:** Chrome's SpeechRecognition requires HTTPS (or localhost). For the demo, serve via `localhost`. SpeechSynthesis voices depend on the macOS voice pack installed.
+
+### G7 — Single builder (was two builders)
+**Change:** The Android plan split work across Builder A (on-device brain) and Builder B (memory + cloud + shell). Now a single builder does everything.
+**Impact:** Sequencing is linear rather than parallel. Critical-path items (Ollama tool-calling, Neo4j/ChromaDB smoke tests) must work before dependent work begins.
+**Residual risk:** Time pressure is higher. Cut stretch goals (FunctionGemma router, multimodal polish) early if behind schedule.
 
 ## Gaps the plan didn't cover
 
-### G3 — Where do embeddings come from?
-The vector store needs embeddings; the transcript never said how they're produced.
-**Fix:** Use **EmbeddingGemma** on-device (D9). Keeps writes local and in-family.
-**Residual risk:** Another model file to load into memory alongside Gemma 4 E4B — watch total RAM footprint on the Pixel 10; load lazily / share memory budget.
+### G8 — Local service orchestration
+The new stack requires **three local services**: Ollama, Neo4j, and ChromaDB. The Android plan had one embedded DB (KoreDB) and no model server (LiteRT-LM was loaded in-process).
+**Fix:** Create a single `docker-compose.yml` or shell launch script for the hackathon. Auto-start on demo boot.
+**Residual risk:** Low — Docker Compose handles this cleanly. Or run Neo4j + ChromaDB as native processes.
 
-### G4 — Function-call reliability + parsing is the real adapter surface
-Gemma 4 emits tool calls in a specific token format that needs a custom parser; ADK expects a `Flow<Event>`. This glue is the top technical risk.
-**Fix:** Build the adapter in isolation and prove a function-call round-trip *before* wiring the app (see [06](06-adk-model-adapter.md) build order). Wrap the async callback in `callbackFlow`. Keep a whitelisted `ToolRegistry` (never resolve tool names to functions dynamically).
-**Residual risk:** If E4B's function-calling is inconsistent under time pressure, fall back to **FunctionGemma (270M)** for routing (D7) — decide early, not at 3am.
+### G9 — Web Speech API quality baseline
+Web Speech API quality is browser/OS-dependent and may not match Android native speech.
+**Fix:** Test and record SpeechRecognition accuracy and SpeechSynthesis naturalness on the demo MacBook on day 0. Have a text-input fallback for the demo.
+**Residual risk:** Low for demo — scripted scenarios can be tuned to the chosen voice.
 
-### G5 — Memory persistence & demo cold-start
-A "remembers your life" app that starts empty or wipes on restart kills the pitch.
-**Fix:** KoreDB persists to disk (LSM) — inherent. Add a **seed fixture** of 1–2 days synthetic history (D10, schema doc §Seeding).
-**Residual risk:** Low. Just don't forget to run the seeder on the demo device.
-
-### G6 — Async-write vs. blocking-read was undecided
-**Fix:** Writes async/fire-and-forget in parallel with TTS; reads blocking but served from a pre-warmed LRU cache of hot entities (D11, architecture doc).
-**Residual risk:** Negligible at demo timescales.
-
-### G7 — Two execution paths, one memory
-ADK's paved on-device path is Gemini Nano, not Gemma-4-on-LiteRT-LM.
-**Fix:** Custom ADK `Model` adapter for the local path (D5); ADK's built-in Gemini model for the cloud path. Both share the same memory `ToolRegistry` so cloud reasoning stays grounded locally.
-**Residual risk:** The adapter (G4) — same top risk.
+### G10 — ChromaDB embedding dimension mismatch
+The Gemini Embedding API and ChromaDB must agree on vector dimensions.
+**Fix:** On day 0, call `gemini-embedding-2` once, record the output dimension (likely 768 or 1024), and configure the ChromaDB collection with that dimension before any writes.
+**Residual risk:** Negligible — this is a one-time check.
 
 ## Risks to actively de-risk on day 0–1
 
 | Risk | Why it bites | Mitigation |
 | --- | --- | --- |
-| Adapter / function-call parsing (G4) | Everything downstream depends on it | Prove round-trip in isolation first; FunctionGemma fallback ready |
-| KoreDB is young (pre-1.0, small maintainer base) | Undocumented bugs under time pressure | Day-0 smoke test: insert nodes/edges, insert vectors, run a GraphRAG query. Fallback: SQLite + relational edges + on-device vector search |
-| Model file size (multi-GB) on demo device | First-run download fails / eats time | Pre-provision Gemma 4 E4B (+ EmbeddingGemma, + optional FunctionGemma) on the Pixel 10; load from local storage |
-| On-device latency for "real-time" pitch | Judges said not to miss the real-time bar | Measure the local path early (budget in architecture doc); stream tokens to TTS; move routing to FunctionGemma if needed |
-| RAM: multiple models resident | Gemma 4 E4B + EmbeddingGemma (+ FunctionGemma) at once | Lazy-load, unload when idle, measure peak on Pixel 10 |
-| Demo reliability of live perception | Camera angle/lighting/timing on stage | Script a tight scenario; prefer a still frame (local) where possible; rehearse |
+| Ollama Gemma 4 tool-calling reliability | Everything downstream depends on it | Prove raw function-call round-trip on day 0 (declaration in → tool call out → parsed) |
+| Neo4j + ChromaDB: two services running | Demo machine may run out of RAM with Ollama + both DBs | Measure peak RAM on the demo MacBook early. Reduce ChromaDB to single-process mode |
+| Embedding API network dependency | Demo venue Wi-Fi might fail | Writes still work for graph-only queries. Prep a demo script that doesn't need vector search |
+| Web Speech API on demo browser | Chrome version / macOS voice quality may vary | Test on the exact demo MacBook + Chrome version on day 0 |
+| Single-builder time pressure | More work per unit time than two-builder plan | Cut FunctionGemma router and multimodal stretch goals at first sign of schedule risk |
+| Gemma 4 12B download on demo day | 7.6 GB download takes too long on venue Wi-Fi | Pre-download `gemma4:12b` on the demo MacBook before the event |
 
-## Deferred by your explicit request (parking lot)
+## Deferred by explicit request (parking lot)
 
-### G8 — Consent / oversight framing
-Passive-ish monitoring of a vulnerable population invites an obvious ethics question, and it's core to the "dignity-preserving, not surveillance" claim. Deferred for the build per your call. **Recommendation:** keep a one-line note that trigger-based perception + on-device storage + "what is never recorded" is the answer when it comes up — it costs nothing and preempts the question. Not a build blocker.
+### G11 — Consent / oversight framing
+Passive-ish monitoring of a vulnerable population invites an obvious ethics question, and it's core to the "dignity-preserving, not surveillance" claim. Deferred for the build. **Recommendation:** keep a one-line note that trigger-based perception + on-device storage + "what is never recorded" is the answer when it comes up — it costs nothing and preempts the question. Not a build blocker.
 
-### G9 — Pitch / positioning
-Deferred. Note only: switching to native TTS drops the "showcase 2 Gemini APIs" angle; revisit when you do pitch prep.
+### G12 — Pitch / positioning
+Deferred. Note only: the pivot from Android to laptop loses the "pure mobile" angle but gains a stronger "runs on off-the-shelf hardware" story — revisit when you do pitch prep.

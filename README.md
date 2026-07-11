@@ -1,6 +1,6 @@
 # Anchor
 
-A dignity-preserving memory companion for people with mild cognitive impairment (MCI) / early dementia and their caregivers. Anchor runs **local-first on a single Android device** (Pixel 10), using on-device Gemma 4 for perception, reasoning, and memory, and reaching to the cloud (Gemini Live API) only when real-time streaming vision/audio or heavier reasoning is genuinely needed.
+A dignity-preserving memory companion for people with mild cognitive impairment (MCI) / early dementia and their caregivers. Anchor runs **local-first on a single MacBook** using **Gemma 4 via Ollama + MLX** for perception, reasoning, and memory, and reaches to the cloud (Gemini Live API) only when real-time streaming vision/audio or heavier reasoning is genuinely needed.
 
 **Core principle:** *Cloud is an enhancement, not a dependency.* Everything essential works offline.
 
@@ -16,24 +16,20 @@ A dignity-preserving memory companion for people with mild cognitive impairment 
 | [docs/02-architecture.md](docs/02-architecture.md) | System architecture + the two end-to-end request pipelines (local path, cloud path) |
 | [docs/03-tech-stack.md](docs/03-tech-stack.md) | Every layer, the exact library/artifact, and why |
 | [docs/04-design-decisions.md](docs/04-design-decisions.md) | ADR-style log of the key decisions and their trade-offs |
-| [docs/05-koredb-schema.md](docs/05-koredb-schema.md) | Graph node/edge types + vector namespaces for the memory store |
-| [docs/06-adk-model-adapter.md](docs/06-adk-model-adapter.md) | The custom ADK `Model` adapter wrapping on-device Gemma 4 (the core glue) |
+| [docs/05-koredb-schema.md](docs/05-koredb-schema.md) | Graph node/edge types (Neo4j) + vector collections (ChromaDB) for the memory store |
+| [docs/06-agent-loop.md](docs/06-agent-loop.md) | The Vercel AI SDK agent loop wrapping Ollama + Gemini Live (the core glue) |
 | [docs/07-gaps-and-risks.md](docs/07-gaps-and-risks.md) | Gaps found reviewing the plan, the fixes, and open risks to de-risk early |
-| [docs/08-implementation-plan.md](docs/08-implementation-plan.md) | Milestone + task breakdown for a 2-person team over the hackathon |
-
-## Team
-
-Two builders. Suggested split (see implementation plan for detail):
-
-- **Builder A — On-device brain:** Gemma 4 via LiteRT-LM, ADK Model adapter, function-calling parser, PII filter, intent router.
-- **Builder B — Memory + cloud + app shell:** KoreDB schema & GraphRAG, EmbeddingGemma embeddings, Gemini Live path, Jetpack Compose UI, native TTS.
+| [docs/08-implementation-plan.md](docs/08-implementation-plan.md) | Milestone + task breakdown for a single builder over the hackathon |
+| [docs/09-architecture-deep-dive.md](docs/09-architecture-deep-dive.md) | Detailed agent loop design, tool definitions, Neo4j schema, ChromaDB collection spec |
 
 ## Status of key assumptions (verified July 2026)
 
-- **Gemma 4** exists (released Apr 2, 2026), on-device sizes **E2B / E4B**. It is **multimodal** — text + image input, with audio input on E2B/E4B/12B; **text output only**. (The earlier "text-only" assumption was wrong; see gaps doc — this is good news.)
-- **On-device runtime:** MediaPipe LLM Inference API is now **maintenance-only**; **LiteRT-LM** is the recommended path. Adapter targets LiteRT-LM.
-- **ADK for Android** (Kotlin, v0.1.x) is real; its paved on-device path is Gemini Nano via ML Kit GenAI, so wrapping Gemma 4 requires a **custom `Model` adapter**.
-- **KoreDB** is a pure-Kotlin, LSM-tree, zero-JNI embedded DB with native vector search — good single-dependency fit; still young, smoke-test on day 0.
-- **Android `TextToSpeech`** — fully on-device voice output, zero setup.
+- **Gemma 4** exists (released Apr 2, 2026), on-device sizes **E2B / E4B / 12B**. It is **multimodal** — text + image input, with audio input on E2B/E4B/12B; **text output only**.
+- **Ollama + MLX** on Apple Silicon is the fastest local runtime for Gemma 4 on MacBook. Gemma 4 12B (Q4_K_M, ~7.6 GB) runs comfortably on 16 GB M-series Macs at ~25 tok/s.
+- **Neo4j** runs locally via `brew install neo4j`. **ChromaDB** runs locally as a Python/Docker server. Both have mature JavaScript clients.
+- **Gemini Live API** is accessible from the browser via WebSocket using the `@google/genai` JS SDK.
+- **Vercel AI SDK** provides the Ollama provider and tool-calling framework needed for the agent loop.
+- **Web Speech API** provides both speech recognition and speech synthesis in Chrome/Edge — fully local, zero setup.
+- **Gemini Embedding API** (`gemini-embedding-2`) provides multimodal embeddings for text and photo uploads — requires internet for writes only.
 
 See [docs/07-gaps-and-risks.md](docs/07-gaps-and-risks.md) for the sourced details.
