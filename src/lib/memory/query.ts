@@ -5,7 +5,7 @@ import {
   queryEntityByLabelOrName,
 } from "@/lib/memory/neo4j";
 import { tryEmbedText } from "@/lib/memory/embed";
-import { queryEpisodicVectors } from "@/lib/memory/chroma";
+import { tryQueryEpisodicVectors } from "@/lib/memory/chroma";
 import type {
   BlendedMemoryResult,
   EpisodeNamespace,
@@ -51,7 +51,7 @@ export async function queryMemory(
 
   const embedding = await tryEmbedText(intent);
   const episodes = embedding
-    ? await queryEpisodicVectors({
+    ? await tryQueryEpisodicVectors({
         embedding,
         namespace: inferNamespace(intent),
         sinceEpochMs: windowToSince(window),
@@ -77,7 +77,7 @@ export async function getMedicationStatus(period: MedicationPeriod): Promise<Med
   ]);
 
   const recentEpisodes = embedding
-    ? await queryEpisodicVectors({
+    ? await tryQueryEpisodicVectors({
         embedding,
         namespace: "episodic/medical",
         sinceEpochMs: startOfToday(),
@@ -97,7 +97,7 @@ export async function locateObject(
   ]);
 
   const episodes = embedding
-    ? await queryEpisodicVectors({ embedding, namespace: "episodic/objects", nResults: 3 })
+    ? await tryQueryEpisodicVectors({ embedding, namespace: "episodic/objects", nResults: 3 })
     : [];
 
   return {

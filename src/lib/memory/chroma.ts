@@ -15,12 +15,19 @@ function getClient(): ChromaClient {
 // `embeddingFunction: null` explicitly disables Chroma's default embedder
 // (which would otherwise try to download @chroma-core/default-embed) — we
 // always supply our own vectors from the local embeddinggemma model.
-export function getEpisodicCollection(): Promise<Collection> {
+export async function getEpisodicCollection(): Promise<Collection> {
   if (!collectionPromise) {
-    collectionPromise = getClient().getOrCreateCollection({
-      name: CHROMA_COLLECTION,
-      embeddingFunction: null,
-    });
+    // A Promise is truthy even when it later rejects, so a naive
+    // `if (!collectionPromise)` cache would permanently poison itself on the
+    // first transient ChromaDB failure (e.g. right after `docker compose up
+    // -d`) — every later call would keep awaiting the same dead rejection
+    // instead of retrying. Clear the cache on failure so the next call retries.
+    collectionPromise = getClient()
+      .getOrCreateCollection({ name: CHROMA_COLLECTION, embeddingFunction: null })
+      .catch((err) => {
+        collectionPromise = undefined;
+        throw err;
+      });
   }
   return collectionPromise;
 }
@@ -97,4 +104,24 @@ export async function queryEpisodicVectors(opts: {
     distance: row.distance ?? null,
     namespace: ((row.metadata as EpisodeMetadata | null)?.namespace ?? "episodic/daily") as EpisodeNamespace,
   }));
+}
+
+/**
+ * Graceful variant that degrades to graph-only results on a ChromaDB outage,
+ * mirroring lib/memory/embed.ts's tryEmbedText(). Without this, a Chroma
+ * failure (distinct from an Ollama failure) propagates uncaught out of
+ * queryMemory/getMedicationStatus/locateObject and gets misreported upstream
+ * as "Local model is unreachable. Is Ollama running?" when the real cause is
+ * ChromaDB.
+ */
+export async function tryQueryEpisodicVectors(
+  opts: Parameters<typeof queryEpisodicVectors>[0],
+): Promise<EpisodicMatch[]> {
+  try {
+    return await queryEpisodicVectors(opts);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[chroma] vector query unavailable, degrading to graph-only: ${message}`);
+    return [];
+  }
 }

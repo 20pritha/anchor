@@ -296,10 +296,17 @@ export async function listUpcomingRoutines(
   });
 
   const now = new Date();
+  // For "tomorrow" specifically, search starting from midnight tonight, not
+  // from `now` — otherwise nextOccurrence() (which returns the first
+  // occurrence strictly after its `from` point) can return a later-today
+  // event and this window would mislabel it as "tomorrow".
+  const searchFrom = new Date(now);
   const endOfWindow = new Date(now);
   if (window === "today") {
     endOfWindow.setHours(23, 59, 59, 999);
   } else if (window === "tomorrow") {
+    searchFrom.setDate(now.getDate() + 1);
+    searchFrom.setHours(0, 0, 0, 0);
     endOfWindow.setDate(now.getDate() + 2);
     endOfWindow.setHours(0, 0, 0, 0);
   } else {
@@ -309,7 +316,7 @@ export async function listUpcomingRoutines(
   return routines
     .map((r) => ({
       label: r.label,
-      next: nextOccurrence(r.timeOfDay, r.recurrence, r.daysOfWeek, now),
+      next: nextOccurrence(r.timeOfDay, r.recurrence, r.daysOfWeek, searchFrom),
     }))
     .filter((r): r is { label: string; next: Date } => r.next !== null && r.next <= endOfWindow)
     .sort((a, b) => a.next.getTime() - b.next.getTime())
