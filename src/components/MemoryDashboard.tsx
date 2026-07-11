@@ -1,9 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { GraphViewer } from "@/components/GraphViewer";
+import { useRef, useState } from "react";
 import { UploadIcon } from "@/components/icons";
-import type { GraphNode, GraphEdge } from "@/lib/types";
 
 interface Status {
   ok: boolean;
@@ -15,31 +13,6 @@ export function MemoryDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<Status | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const [graph, setGraph] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] } | null>(null);
-  const [graphError, setGraphError] = useState<string | null>(null);
-  const [graphLoading, setGraphLoading] = useState(true);
-
-  const loadGraph = useCallback(async () => {
-    setGraphLoading(true);
-    setGraphError(null);
-    try {
-      const res = await fetch("/api/graph");
-      const body = (await res.json()) as { nodes?: GraphNode[]; edges?: GraphEdge[]; error?: string };
-      if (!res.ok || !body.nodes) throw new Error(body.error ?? "Could not load the graph");
-      setGraph({ nodes: body.nodes, edges: body.edges ?? [] });
-    } catch (err) {
-      setGraphError(err instanceof Error ? err.message : "Could not load the graph");
-    } finally {
-      setGraphLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Initial data fetch on mount; loadGraph flips loading state as it runs.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadGraph();
-  }, [loadGraph]);
 
   async function ingest(text: string, source: "note" | "upload", title?: string) {
     setSubmitting(true);
@@ -59,7 +32,6 @@ export function MemoryDashboard() {
         }.`,
       });
       setNote("");
-      void loadGraph();
     } catch (err) {
       setStatus({ ok: false, message: err instanceof Error ? err.message : "Could not store the memory" });
     } finally {
@@ -77,22 +49,21 @@ export function MemoryDashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-3">
+    <div className="mx-auto max-w-2xl px-4 py-3">
       <header className="mb-3">
         <h1 className="text-2xl font-bold">Memory</h1>
         <p className="text-[0.95rem]" style={{ color: "var(--md-on-surface-variant)" }}>
-          Add unstructured notes or upload a file, and explore the knowledge graph Anchor remembers.
+          Add unstructured notes or upload a file — Anchor splits it into memories automatically.
         </p>
       </header>
 
-      {/* Add to memory */}
-      <section className="m3-card mb-4 p-4">
+      <section className="m3-card p-4">
         <h2 className="mb-2 text-xl font-bold">Add to memory</h2>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Type anything to remember — e.g. 'Ravi enjoys gardening on Sunday mornings and dislikes loud rooms.' Longer text is split into separate memories automatically."
-          rows={4}
+          rows={5}
           className="m3-field resize-y"
         />
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -141,28 +112,17 @@ export function MemoryDashboard() {
         </p>
       </section>
 
-      {/* Knowledge graph */}
-      <section className="m3-card p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Knowledge graph</h2>
-          <button type="button" onClick={() => void loadGraph()} className="m3-btn m3-btn-outlined px-4 py-1.5 text-[0.95rem]">
-            Refresh
-          </button>
-        </div>
-        {graphLoading && (
-          <p className="py-10 text-center text-lg" style={{ color: "var(--md-on-surface-variant)" }}>
-            Loading graph…
-          </p>
-        )}
-        {graphError && (
-          <p className="py-6 text-center text-[0.95rem]" style={{ color: "var(--md-error)" }}>
-            {graphError}
-          </p>
-        )}
-        {!graphLoading && !graphError && graph && (
-          <GraphViewer nodes={graph.nodes} edges={graph.edges} />
-        )}
-      </section>
+      <p className="mt-3 text-[0.9rem]" style={{ color: "var(--md-on-surface-variant)" }}>
+        Want to see what Anchor remembers? Browse the timeline on{" "}
+        <a href="/recent" className="font-semibold underline">
+          Recent activity
+        </a>{" "}
+        or explore how it all connects on the{" "}
+        <a href="/caregiver" className="font-semibold underline">
+          Caregiver
+        </a>{" "}
+        page.
+      </p>
     </div>
   );
 }

@@ -324,14 +324,20 @@ export async function listUpcomingRoutines(
 }
 
 /**
- * Whole-graph snapshot for the memory dashboard's graph viewer. Returns every
- * node with a display label + its Neo4j type, and every directed relationship
- * between two returned nodes.
+ * Whole-graph snapshot for the caregiver knowledge-graph viewer. Excludes
+ * Episode nodes on purpose: episodic memories are raw text blobs (already
+ * browsable as a list on the Recent Activity page) and there are typically
+ * far more of them than entities, so including them would swamp the small,
+ * meaningful structure of people/medications/routines/places/objects with
+ * clutter. Returns every remaining node with a display label + its Neo4j
+ * type, and every directed relationship between two returned nodes.
  */
 export async function fetchGraph(): Promise<{ nodes: GraphNode[]; edges: GraphEdge[] }> {
   return withSession(async (session) => {
     const result = await session.run(
-      `MATCH (n) OPTIONAL MATCH (n)-[r]->(m) RETURN n, r, m`,
+      `MATCH (n) WHERE NOT n:Episode
+       OPTIONAL MATCH (n)-[r]->(m) WHERE NOT m:Episode
+       RETURN n, r, m`,
     );
 
     const nodes = new Map<string, GraphNode>();

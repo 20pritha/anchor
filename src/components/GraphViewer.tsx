@@ -117,11 +117,12 @@ function layout(nodes: GraphNode[], edges: GraphEdge[]): Positioned[] {
 export function GraphViewer({ nodes, edges }: { nodes: GraphNode[]; edges: GraphEdge[] }) {
   const positioned = useMemo(() => layout(nodes, edges), [nodes, edges]);
   const posById = useMemo(() => new Map(positioned.map((p) => [p.id, p])), [positioned]);
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
 
   // Pan / zoom
   const [view, setView] = useState({ x: 0, y: 0, scale: 1 });
   const drag = useRef<{ x: number; y: number } | null>(null);
+  const moved = useRef(false);
 
   const types = useMemo(() => {
     const set = new Set(nodes.map((n) => n.type));
@@ -129,14 +130,16 @@ export function GraphViewer({ nodes, edges }: { nodes: GraphNode[]; edges: Graph
   }, [nodes]);
 
   const connected = useMemo(() => {
-    if (!hovered) return null;
-    const ids = new Set<string>([hovered]);
+    if (!selected) return null;
+    const ids = new Set<string>([selected]);
     for (const e of edges) {
-      if (e.source === hovered) ids.add(e.target);
-      if (e.target === hovered) ids.add(e.source);
+      if (e.source === selected) ids.add(e.target);
+      if (e.target === selected) ids.add(e.source);
     }
     return ids;
-  }, [hovered, edges]);
+  }, [selected, edges]);
+
+  const selectedNode = selected ? nodes.find((n) => n.id === selected) : undefined;
 
   if (nodes.length === 0) {
     return (
@@ -174,17 +177,22 @@ export function GraphViewer({ nodes, edges }: { nodes: GraphNode[]; edges: Graph
           }}
           onPointerDown={(e) => {
             drag.current = { x: e.clientX, y: e.clientY };
+            moved.current = false;
             (e.target as Element).setPointerCapture?.(e.pointerId);
           }}
           onPointerMove={(e) => {
             if (!drag.current) return;
             const dx = e.clientX - drag.current.x;
             const dy = e.clientY - drag.current.y;
+            if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved.current = true;
             drag.current = { x: e.clientX, y: e.clientY };
             setView((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
           }}
           onPointerUp={() => {
             drag.current = null;
+          }}
+          onClick={() => {
+            if (!moved.current) setSelected(null);
           }}
         >
           <g transform={`translate(${view.x},${view.y}) scale(${view.scale})`}>
@@ -209,32 +217,34 @@ export function GraphViewer({ nodes, edges }: { nodes: GraphNode[]; edges: Graph
 
             {positioned.map((p) => {
               const color = NODE_COLORS[p.node.type] ?? "var(--node-episode)";
-              const isEpisode = p.node.type === "Episode";
-              const r = isEpisode ? 7 : 11;
+              const r = p.id === selected ? 13 : 11;
               const dim = connected && !connected.has(p.id);
               return (
                 <g
                   key={p.id}
                   transform={`translate(${p.x},${p.y})`}
-                  opacity={dim ? 0.25 : 1}
-                  onPointerEnter={() => setHovered(p.id)}
-                  onPointerLeave={() => setHovered((h) => (h === p.id ? null : h))}
+                  opacity={dim ? 0.3 : 1}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelected((s) => (s === p.id ? null : p.id));
+                  }}
                   style={{ cursor: "pointer" }}
                 >
-                  <circle r={r} fill={color} stroke="var(--md-surface)" strokeWidth={2} />
-                  {(!isEpisode || hovered === p.id) && (
-                    <text
-                      x={0}
-                      y={r + 14}
-                      textAnchor="middle"
-                      fontSize={13}
-                      fontWeight={600}
-                      fill="var(--md-on-surface)"
-                      style={{ pointerEvents: "none" }}
-                    >
-                      {p.node.label.length > 22 ? `${p.node.label.slice(0, 21)}…` : p.node.label}
-                    </text>
+                  {p.id === selected && (
+                    <circle r={r + 5} fill="none" stroke="var(--md-primary)" strokeWidth={2.5} />
                   )}
+                  <circle r={r} fill={color} stroke="var(--md-surface)" strokeWidth={2} />
+                  <text
+                    x={0}
+                    y={r + 14}
+                    textAnchor="middle"
+                    fontSize={13}
+                    fontWeight={600}
+                    fill="var(--md-on-surface)"
+                    style={{ pointerEvents: "none" }}
+                  >
+                    {p.node.label.length > 22 ? `${p.node.label.slice(0, 21)}…` : p.node.label}
+                  </text>
                 </g>
               );
             })}
@@ -244,10 +254,12 @@ export function GraphViewer({ nodes, edges }: { nodes: GraphNode[]; edges: Graph
 
       <div className="mt-2 flex items-center justify-between text-[0.85rem]" style={{ color: "var(--md-on-surface-variant)" }}>
         <span>
-          {nodes.length} nodes · {edges.length} links
+          {selectedNode
+            ? `${selectedNode.label} (${selectedNode.type}) · ${(connected?.size ?? 1) - 1} connection${(connected?.size ?? 1) - 1 === 1 ? "" : "s"}`
+            : `${nodes.length} nodes · ${edges.length} links`}
         </span>
         <span className="flex items-center gap-3">
-          <span>Scroll to zoom · drag to pan</span>
+          <span>Click a node to highlight it · drag to pan · scroll to zoom</span>
           <button
             type="button"
             onClick={() => setView({ x: 0, y: 0, scale: 1 })}
