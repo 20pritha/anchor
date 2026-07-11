@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { LiveSession } from "@/components/LiveSession";
 import { CameraIcon } from "@/components/icons";
-import { pushDelta, flush, cancelSpeech } from "@/components/speaker";
+import { cancelSpeech } from "@/components/speaker";
 
 export interface CameraButtonProps {
-  onAssistantMessage: (text: string) => void;
+  /** `speak` defaults to true; the live path passes false since the model streams its own audio. */
+  onAssistantMessage: (text: string, speak?: boolean) => void;
   disabled?: boolean;
 }
 
@@ -104,16 +105,18 @@ export function CameraButton({ onAssistantMessage, disabled }: CameraButtonProps
 
       const session = new LiveSession({
         onTextDelta: (delta) => {
+          // Model speaks its own audio; just accumulate the transcript text.
           liveTextRef.current += delta;
-          pushDelta(delta);
         },
         onTurnComplete: () => {
-          flush();
-          if (liveTextRef.current.trim()) onAssistantMessage(liveTextRef.current.trim());
+          if (liveTextRef.current.trim()) onAssistantMessage(liveTextRef.current.trim(), false);
           liveTextRef.current = "";
         },
         onError: (message) => setError(message),
-        onClose: () => setLiveActive(false),
+        onClose: (reason) => {
+          setLiveActive(false);
+          if (reason) setError(reason);
+        },
       });
 
       await session.start();

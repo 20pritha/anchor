@@ -155,9 +155,9 @@ export function ConversationView() {
       <div className="shrink-0 pb-2">
         <div className="mb-2">
           <CameraButton
-            onAssistantMessage={(text) => {
+            onAssistantMessage={(text, speak = true) => {
               appendMessage("assistant", text);
-              speakFullText(text);
+              if (speak) speakFullText(text);
             }}
             disabled={busy}
           />

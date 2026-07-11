@@ -5,7 +5,7 @@ export interface LiveSessionCallbacks {
   onTextDelta: (text: string) => void;
   onTurnComplete?: () => void;
   onError: (message: string) => void;
-  onClose?: () => void;
+  onClose?: (reason?: string) => void;
 }
 
 async function fetchLiveToken(): Promise<{ token: string; model: string }> {
@@ -40,6 +40,10 @@ export class LiveSession {
 
   constructor(private callbacks: LiveSessionCallbacks) {}
 
+  // Web Audio playback state for the model's streamed PCM audio.
+  private audioCtx: AudioContext | null = null;
+  private nextStartTime = 0;
+
   async start(): Promise<void> {
     const { token, model } = await fetchLiveToken();
     const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
@@ -49,26 +53,76 @@ export class LiveSession {
       callbacks: {
         onmessage: (message: LiveServerMessage) => this.handleMessage(message),
         onerror: (event) => this.callbacks.onError(event.message || "Live session error"),
-        onclose: () => this.callbacks.onClose?.(),
+        onclose: (event) => this.callbacks.onClose?.(event?.reason),
       },
       config: {
-        responseModalities: [Modality.TEXT],
+        // AUDIO out (the only modality these models support) + transcription so
+        // the UI still gets the words. Tools keep the cloud path grounded in
+        // local memory.
+        responseModalities: [Modality.AUDIO],
+        outputAudioTranscription: {},
         tools: [{ functionDeclarations: liveFunctionDeclarations }],
       },
     });
   }
 
   private handleMessage(message: LiveServerMessage): void {
-    if (message.text) {
-      this.callbacks.onTextDelta(message.text);
+    // Spoken words, as text, for the transcript bubble.
+    const transcript = message.serverContent?.outputTranscription?.text;
+    if (transcript) {
+      this.callbacks.onTextDelta(transcript);
     }
+
+    // Streamed PCM audio chunks — play them back in order.
+    const parts = message.serverContent?.modelTurn?.parts ?? [];
+    for (const part of parts) {
+      const data = part.inlineData?.data;
+      if (data) this.playPcmChunk(data);
+    }
+
     if (message.serverContent?.turnComplete) {
       this.callbacks.onTurnComplete?.();
     }
+
     const calls = message.toolCall?.functionCalls;
     if (calls && calls.length > 0) {
       void this.handleToolCalls(calls);
     }
+  }
+
+  /**
+   * Decodes a base64 PCM16 mono chunk (24 kHz, as produced by the native-audio
+   * Live models) and schedules it to play immediately after whatever is already
+   * queued, so consecutive chunks form gapless speech.
+   */
+  private playPcmChunk(base64: string): void {
+    if (typeof window === "undefined") return;
+    if (!this.audioCtx) {
+      const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      this.audioCtx = new Ctor();
+      this.nextStartTime = this.audioCtx.currentTime;
+    }
+    const ctx = this.audioCtx;
+    void ctx.resume();
+
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const int16 = new Int16Array(bytes.buffer);
+    if (int16.length === 0) return;
+
+    const float32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) float32[i] = int16[i]! / 32768;
+
+    const buffer = ctx.createBuffer(1, float32.length, 24000);
+    buffer.getChannelData(0).set(float32);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+
+    const start = Math.max(ctx.currentTime, this.nextStartTime);
+    source.start(start);
+    this.nextStartTime = start + buffer.duration;
   }
 
   private async handleToolCalls(calls: FunctionCall[]): Promise<void> {
@@ -101,5 +155,8 @@ export class LiveSession {
   stop(): void {
     this.session?.close();
     this.session = null;
+    void this.audioCtx?.close();
+    this.audioCtx = null;
+    this.nextStartTime = 0;
   }
 }

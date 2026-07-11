@@ -33,7 +33,12 @@ export async function createEphemeralLiveToken(systemInstruction: string): Promi
       liveConnectConstraints: {
         model: env.GEMINI_LIVE_MODEL,
         config: {
-          responseModalities: [Modality.TEXT],
+          // Every Live model available to this project is native-audio and only
+          // supports AUDIO output (TEXT is rejected at connect). We take the
+          // model's spoken audio and enable output transcription so the UI can
+          // still show the words in the transcript.
+          responseModalities: [Modality.AUDIO],
+          outputAudioTranscription: {},
           systemInstruction,
         },
       },
