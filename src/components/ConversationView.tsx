@@ -148,9 +148,8 @@ export function ConversationView() {
           </div>
         )}
 
-        {messages.map((m, i) => {
+        {messages.map((m) => {
           const isUser = m.role === "user";
-          const thinking = !isUser && !m.text && busy && i === messages.length - 1;
           return (
             <div key={m.id} className={`flex max-w-[75%] flex-col ${isUser ? "ml-auto items-end" : "mr-auto items-start"}`}>
               <span
@@ -170,19 +169,32 @@ export function ConversationView() {
                     : { background: "var(--md-surface-container-high)", color: "var(--md-on-surface)" }
                 }
               >
-                {thinking ? (
-                  <span className="inline-flex items-center gap-1 py-1" aria-label="Anchor is thinking">
-                    <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "currentColor", animationDelay: "0ms" }} />
-                    <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "currentColor", animationDelay: "150ms" }} />
-                    <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "currentColor", animationDelay: "300ms" }} />
-                  </span>
-                ) : (
-                  m.text
-                )}
+                {m.text}
               </div>
             </div>
           );
         })}
+
+        {/* Shown for the whole request round-trip, not just after the first
+            chunk arrives — the up-to-15s local-model wait (item #5) happens
+            entirely inside the pending fetch, before any message changes. */}
+        {busy && messages[messages.length - 1]?.role === "user" && (
+          <div className="mr-auto flex max-w-[75%] flex-col items-start">
+            <span className="mb-0.5 px-1 text-[0.78rem] font-semibold" style={{ color: "var(--md-on-surface-variant)" }}>
+              Anchor
+            </span>
+            <div
+              className="rounded-2xl rounded-bl-md px-4 py-2.5"
+              style={{ background: "var(--md-surface-container-high)", color: "var(--md-on-surface)" }}
+            >
+              <span className="inline-flex items-center gap-1 py-1" aria-label="Anchor is thinking">
+                <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "currentColor", animationDelay: "0ms" }} />
+                <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "currentColor", animationDelay: "150ms" }} />
+                <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "currentColor", animationDelay: "300ms" }} />
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="shrink-0 pb-2">
