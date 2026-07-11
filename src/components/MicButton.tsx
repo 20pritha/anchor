@@ -29,6 +29,17 @@ export function MicButton({ onTranscript, disabled }: MicButtonProps) {
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  // ConversationView passes an inline arrow function, a new reference every
+  // render. Keeping it in a ref (updated every render, read from callbacks)
+  // means the setup effect below can depend on `[]` instead of `[onTranscript]`
+  // — otherwise every parent re-render (e.g. each streamed chunk) would tear
+  // down and recreate the SpeechRecognition instance, killing an in-progress
+  // listen session.
+  const onTranscriptRef = useRef(onTranscript);
+  useEffect(() => {
+    onTranscriptRef.current = onTranscript;
+  });
+
   useEffect(() => {
     const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) {
@@ -48,7 +59,7 @@ export function MicButton({ onTranscript, disabled }: MicButtonProps) {
 
     recognition.onresult = (event) => {
       const transcript = event.results[event.results.length - 1]?.[0]?.transcript;
-      if (transcript) onTranscript(transcript.trim());
+      if (transcript) onTranscriptRef.current(transcript.trim());
     };
     recognition.onerror = () => setListening(false);
     recognition.onend = () => setListening(false);
@@ -58,7 +69,7 @@ export function MicButton({ onTranscript, disabled }: MicButtonProps) {
       recognition.stop();
       recognitionRef.current = null;
     };
-  }, [onTranscript]);
+  }, []);
 
   if (!supported) {
     return (

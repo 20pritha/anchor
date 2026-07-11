@@ -10,6 +10,7 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   text: string;
+  timestamp: number;
 }
 
 let nextId = 0;
@@ -37,14 +38,21 @@ export function ConversationView() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  // Cancel any in-flight request if the user navigates away mid-stream —
+  // otherwise the reader loop keeps running (and speaking) after unmount.
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
+
   function appendMessage(role: Message["role"], text: string): string {
     const id = newId();
-    setMessages((prev) => [...prev, { id, role, text }]);
+    setMessages((prev) => [...prev, { id, role, text, timestamp: Date.now() }]);
     return id;
   }
 
@@ -65,11 +73,15 @@ export function ConversationView() {
     cancelSpeech();
     appendMessage("user", trimmed);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const res = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: trimmed }),
+        signal: controller.signal,
       });
 
       const contentType = res.headers.get("content-type") ?? "";
@@ -95,6 +107,7 @@ export function ConversationView() {
       }
       flush();
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       const message = err instanceof Error ? err.message : "Something went wrong.";
       appendMessage("assistant", message);
     } finally {
@@ -105,7 +118,7 @@ export function ConversationView() {
   const empty = messages.length === 0;
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-0px)] max-w-3xl flex-col px-4 pt-3 md:h-screen">
+    <div className="mx-auto flex h-[calc(100vh-0px)] max-w-4xl flex-col px-4 pt-3 md:h-screen">
       <header className="mb-2 shrink-0">
         <h1 className="text-2xl font-bold">Chat</h1>
         <p className="text-[0.95rem]" style={{ color: "var(--md-on-surface-variant)" }}>
@@ -113,7 +126,7 @@ export function ConversationView() {
         </p>
       </header>
 
-      <div ref={scrollRef} className="flex-1 space-y-2.5 overflow-y-auto py-2">
+      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto py-2">
         {empty && (
           <div className="pt-4">
             <p className="mb-3 text-lg" style={{ color: "var(--md-on-surface-variant)" }}>
@@ -135,21 +148,41 @@ export function ConversationView() {
           </div>
         )}
 
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-[1.1rem] leading-snug ${
-              m.role === "user" ? "ml-auto rounded-br-md" : "mr-auto rounded-bl-md"
-            }`}
-            style={
-              m.role === "user"
-                ? { background: "var(--md-primary)", color: "var(--md-on-primary)" }
-                : { background: "var(--md-surface-container-high)", color: "var(--md-on-surface)" }
-            }
-          >
-            {m.text || "…"}
-          </div>
-        ))}
+        {messages.map((m, i) => {
+          const isUser = m.role === "user";
+          const thinking = !isUser && !m.text && busy && i === messages.length - 1;
+          return (
+            <div key={m.id} className={`flex max-w-[75%] flex-col ${isUser ? "ml-auto items-end" : "mr-auto items-start"}`}>
+              <span
+                className="mb-0.5 px-1 text-[0.78rem] font-semibold"
+                style={{ color: "var(--md-on-surface-variant)" }}
+              >
+                {isUser ? "You" : "Anchor"} ·{" "}
+                {new Date(m.timestamp).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+              </span>
+              <div
+                className={`rounded-2xl px-4 py-2.5 text-[1.1rem] leading-snug ${
+                  isUser ? "rounded-br-md" : "rounded-bl-md"
+                }`}
+                style={
+                  isUser
+                    ? { background: "var(--md-primary)", color: "var(--md-on-primary)" }
+                    : { background: "var(--md-surface-container-high)", color: "var(--md-on-surface)" }
+                }
+              >
+                {thinking ? (
+                  <span className="inline-flex items-center gap-1 py-1" aria-label="Anchor is thinking">
+                    <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "currentColor", animationDelay: "0ms" }} />
+                    <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "currentColor", animationDelay: "150ms" }} />
+                    <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "currentColor", animationDelay: "300ms" }} />
+                  </span>
+                ) : (
+                  m.text
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="shrink-0 pb-2">
