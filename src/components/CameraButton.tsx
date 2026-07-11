@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LiveSession } from "@/components/LiveSession";
+import { CameraIcon } from "@/components/icons";
 import { pushDelta, flush, cancelSpeech } from "@/components/speaker";
 
 export interface CameraButtonProps {
@@ -145,37 +146,51 @@ export function CameraButton({ onAssistantMessage, disabled }: CameraButtonProps
 
   return (
     <div className="flex flex-col gap-2">
-      <video ref={videoRef} muted playsInline className={cameraOn ? "w-40 rounded-lg" : "hidden"} />
-      <div className="flex gap-2">
+      <video
+        ref={videoRef}
+        muted
+        playsInline
+        className={cameraOn ? "w-44 rounded-xl" : "hidden"}
+        style={{ border: "1px solid var(--md-outline-variant)" }}
+      />
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={handleStillFrame}
           disabled={disabled || busy || liveActive}
-          className="rounded-full bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-900 transition-colors disabled:opacity-50 dark:bg-neutral-700 dark:text-neutral-50"
+          className="m3-btn m3-btn-tonal px-4 py-2 text-[1rem]"
         >
-          📷 What is this?
+          <CameraIcon className="h-5 w-5" />
+          {busy && !liveActive ? "Looking…" : "What is this?"}
         </button>
         <button
           type="button"
           onClick={liveActive ? stopLive : startLive}
           disabled={disabled || busy}
-          className={`rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
-            liveActive ? "bg-red-600 text-white" : "bg-neutral-200 text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50"
-          }`}
+          className={`m3-btn px-4 py-2 text-[1rem] ${liveActive ? "m3-btn-danger" : "m3-btn-outlined"}`}
         >
-          {liveActive ? "⏹ Stop live" : "🔴 Start live"}
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{ background: liveActive ? "currentColor" : "var(--md-error)" }}
+          />
+          {liveActive ? "Stop live" : "Start live"}
         </button>
         {cameraOn && !liveActive && (
           <button
             type="button"
             onClick={stopCamera}
-            className="rounded-full px-3 py-2 text-xs text-neutral-500 underline"
+            className="px-2 text-[0.85rem] underline"
+            style={{ color: "var(--md-on-surface-variant)" }}
           >
             Turn off camera
           </button>
         )}
       </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && (
+        <p className="text-[0.85rem]" style={{ color: "var(--md-error)" }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }

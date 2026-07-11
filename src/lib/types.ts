@@ -51,7 +51,29 @@ export type EpisodeSource =
   | "local_perception"
   | "cloud_perception"
   | "voice_note"
-  | "caregiver_seed";
+  | "caregiver_seed"
+  | "note"
+  | "upload";
+
+export interface GraphNode {
+  id: string;
+  label: string;
+  /** Neo4j label: User | Person | Medication | Routine | Place | Object | Episode */
+  type: string;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  type: string;
+}
+
+export interface RecentEpisode {
+  id: string;
+  text: string;
+  timestamp: number;
+  source: string;
+}
 
 export type EpisodeNamespace =
   | "episodic/daily"

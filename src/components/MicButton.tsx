@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { MicIcon } from "@/components/icons";
 
 export interface MicButtonProps {
   onTranscript: (text: string) => void;
@@ -61,8 +62,12 @@ export function MicButton({ onTranscript, disabled }: MicButtonProps) {
 
   if (!supported) {
     return (
-      <span className="text-xs text-neutral-500" title="Voice input isn't available in this browser">
-        Voice unavailable — use text input
+      <span
+        className="px-2 text-[0.8rem]"
+        style={{ color: "var(--md-on-surface-variant)" }}
+        title="Voice input isn't available in this browser"
+      >
+        Voice unavailable
       </span>
     );
   }
@@ -85,11 +90,15 @@ export function MicButton({ onTranscript, disabled }: MicButtonProps) {
       onClick={toggle}
       disabled={disabled}
       aria-pressed={listening}
-      className={`rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
-        listening ? "bg-red-600 text-white" : "bg-neutral-200 text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50"
-      }`}
+      aria-label={listening ? "Stop listening" : "Speak"}
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-50"
+      style={
+        listening
+          ? { background: "var(--md-error)", color: "var(--md-on-primary)" }
+          : { background: "var(--md-secondary-container)", color: "var(--md-on-secondary-container)" }
+      }
     >
-      {listening ? "Listening…" : "🎙 Speak"}
+      <MicIcon className={`h-6 w-6 ${listening ? "animate-pulse" : ""}`} />
     </button>
   );
 }

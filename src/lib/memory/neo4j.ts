@@ -9,7 +9,19 @@ import type {
   UserProfile,
   MedicationPeriod,
   Recurrence,
+  GraphNode,
+  GraphEdge,
+  RecentEpisode,
 } from "@/lib/types";
+
+/** neo4j-driver returns Integer objects for integer columns; normalize to JS number. */
+function toNumber(value: unknown): number {
+  if (typeof value === "number") return value;
+  if (value && typeof (value as { toNumber?: () => number }).toNumber === "function") {
+    return (value as { toNumber: () => number }).toNumber();
+  }
+  return Number(value);
+}
 
 let driver: Driver | undefined;
 
@@ -302,6 +314,83 @@ export async function listUpcomingRoutines(
     .filter((r): r is { label: string; next: Date } => r.next !== null && r.next <= endOfWindow)
     .sort((a, b) => a.next.getTime() - b.next.getTime())
     .map((r) => ({ label: r.label, nextOccurrence: r.next.toISOString() }));
+}
+
+/**
+ * Whole-graph snapshot for the memory dashboard's graph viewer. Returns every
+ * node with a display label + its Neo4j type, and every directed relationship
+ * between two returned nodes.
+ */
+export async function fetchGraph(): Promise<{ nodes: GraphNode[]; edges: GraphEdge[] }> {
+  return withSession(async (session) => {
+    const result = await session.run(
+      `MATCH (n) OPTIONAL MATCH (n)-[r]->(m) RETURN n, r, m`,
+    );
+
+    const nodes = new Map<string, GraphNode>();
+    const edges: GraphEdge[] = [];
+    const seenEdges = new Set<string>();
+
+    const idOf = (node: { properties: Record<string, unknown>; elementId: string }): string =>
+      (node.properties.id as string | undefined) ?? node.elementId;
+
+    const addNode = (node: {
+      labels: string[];
+      properties: Record<string, unknown>;
+      elementId: string;
+    } | null) => {
+      if (!node) return;
+      const id = idOf(node);
+      if (nodes.has(id)) return;
+      const type = node.labels[0] ?? "Node";
+      const p = node.properties;
+      const raw =
+        (p.name as string) ??
+        (p.label as string) ??
+        (p.displayName as string) ??
+        (p.text as string) ??
+        type;
+      const label = String(raw).length > 64 ? `${String(raw).slice(0, 61)}…` : String(raw);
+      nodes.set(id, { id, label, type });
+    };
+
+    for (const record of result.records) {
+      const n = record.get("n");
+      const m = record.get("m");
+      const r = record.get("r");
+      addNode(n);
+      addNode(m);
+      if (r && n && m) {
+        const source = idOf(n);
+        const target = idOf(m);
+        const key = `${source}|${r.type}|${target}`;
+        if (!seenEdges.has(key)) {
+          seenEdges.add(key);
+          edges.push({ source, target, type: r.type as string });
+        }
+      }
+    }
+
+    return { nodes: [...nodes.values()], edges };
+  });
+}
+
+/** Most recent episodes across all sources — powers the Recent Activity feed. */
+export async function fetchRecentEpisodes(limit = 30): Promise<RecentEpisode[]> {
+  return withSession(async (session) => {
+    const result = await session.run(
+      `MATCH (e:Episode)
+       RETURN e.id AS id, e.text AS text, e.timestamp AS timestamp, e.source AS source
+       ORDER BY e.timestamp DESC LIMIT $limit`,
+      { limit: neo4j.int(limit) },
+    );
+    return result.records.map((r) => ({
+      id: r.get("id") as string,
+      text: r.get("text") as string,
+      timestamp: toNumber(r.get("timestamp")),
+      source: (r.get("source") as string) ?? "note",
+    }));
+  });
 }
 
 export async function queryEntityByLabelOrName(entity: string): Promise<string | null> {

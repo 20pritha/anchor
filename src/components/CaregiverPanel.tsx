@@ -111,16 +111,20 @@ export function CaregiverPanel() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto flex max-w-md flex-col gap-4 p-6">
-      <h1 className="text-lg font-semibold">Caregiver panel</h1>
-      <p className="text-sm text-neutral-500">Seed or edit the people, medications, and routines Anchor remembers.</p>
+    <form onSubmit={handleSubmit} className="mx-auto flex max-w-lg flex-col gap-3 px-4 py-3">
+      <header>
+        <h1 className="text-2xl font-bold">Caregiver</h1>
+        <p className="text-[0.95rem]" style={{ color: "var(--md-on-surface-variant)" }}>
+          Seed or edit the people, medications, routines, places, and objects Anchor remembers.
+        </p>
+      </header>
 
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-[0.95rem] font-medium">
         Kind
         <select
           value={kind}
           onChange={(e) => setKind(e.target.value as Kind)}
-          className="rounded border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+          className="m3-field"
         >
           {Object.entries(KIND_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
@@ -166,12 +170,12 @@ export function CaregiverPanel() {
             onChange={(v) => update("timeOfDay", v)}
             placeholder="07:00"
           />
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-1 text-[0.95rem] font-medium">
             Recurrence
             <select
               value={form.recurrence}
               onChange={(e) => update("recurrence", e.target.value as FormState["recurrence"])}
-              className="rounded border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+              className="m3-field"
             >
               <option value="daily">Daily</option>
               <option value="weekdays">Weekdays</option>
@@ -206,16 +210,17 @@ export function CaregiverPanel() {
         </>
       )}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
-      >
+      <button type="submit" disabled={submitting} className="m3-btn m3-btn-filled mt-1 self-start">
         {submitting ? "Saving…" : "Save"}
       </button>
 
       {status && (
-        <p className={`text-sm ${status.ok ? "text-green-600" : "text-red-600"}`}>{status.message}</p>
+        <p
+          className="text-[0.95rem] font-medium"
+          style={{ color: status.ok ? "var(--md-success)" : "var(--md-error)" }}
+        >
+          {status.message}
+        </p>
       )}
     </form>
   );
@@ -233,14 +238,14 @@ function TextField({
   placeholder?: string;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-sm">
+    <label className="flex flex-col gap-1 text-[0.95rem] font-medium">
       {label}
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="rounded border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+        className="m3-field"
       />
     </label>
   );

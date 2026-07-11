@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AppShell } from "@/components/AppShell";
 
 export const metadata: Metadata = {
-  title: "Anchor",
-  description: "A dignity-preserving memory companion for people with MCI / early dementia and their caregivers.",
+  title: "Anchor — Memory companion",
+  description:
+    "A dignity-preserving memory companion for people with MCI / early dementia and their caregivers.",
 };
 
 export default function RootLayout({
@@ -13,7 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }
