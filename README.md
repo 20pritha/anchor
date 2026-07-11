@@ -21,6 +21,8 @@ A dignity-preserving memory companion for people with mild cognitive impairment 
 | [docs/07-gaps-and-risks.md](docs/07-gaps-and-risks.md) | Gaps found reviewing the plan, the fixes, and open risks to de-risk early |
 | [docs/08-implementation-plan.md](docs/08-implementation-plan.md) | Milestone + task breakdown for a single builder over the hackathon |
 | [docs/09-architecture-deep-dive.md](docs/09-architecture-deep-dive.md) | Detailed agent loop design, tool definitions, Neo4j schema, ChromaDB collection spec |
+| [docs/10-critical-review-and-revised-plan.md](docs/10-critical-review-and-revised-plan.md) | Adversarial re-review: re-verified assumptions, ranked gaps/contradictions, and a corrected implementation plan |
+| [docs/11-code-setup-plan.md](docs/11-code-setup-plan.md) | End-to-end code build plan: repo layout, deps, file responsibilities, and a build-blind order with per-step acceptance checks |
 
 ## Status of key assumptions (verified July 2026)
 
