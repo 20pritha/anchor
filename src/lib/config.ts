@@ -10,7 +10,7 @@ const EnvSchema = z.object({
   NEO4J_USER: z.string().min(1).default("neo4j"),
   NEO4J_PASSWORD: z.string().min(1).default("testpassword"),
   CHROMA_URL: z.string().min(1).default("http://localhost:8000"),
-  GEMMA_MODEL: z.string().min(1).default("gemma4:12b"),
+  GEMMA_MODEL: z.string().min(1).default("gemma4:e4b"),
   EMBED_MODEL: z.string().min(1).default("embeddinggemma"),
   GEMINI_LIVE_MODEL: z
     .string()

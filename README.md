@@ -55,7 +55,7 @@ docker compose up -d              # Neo4j + ChromaDB
 Pull the models with Ollama, then set `GEMMA_MODEL` in `.env.local` to match what you pulled:
 
 ```bash
-ollama pull gemma4:12b            # or another Gemma 4 size / mlx variant
+ollama pull gemma4:e4b            # or another Gemma 4 size / mlx variant
 ollama pull embeddinggemma
 ```
 
