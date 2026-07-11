@@ -1,5 +1,5 @@
 import { runMemoryAgent } from "@/lib/agent/loop";
-import { dispatchDeterministic } from "@/lib/agent/dispatch";
+import { dispatchDeterministic, directSemanticAnswer } from "@/lib/agent/dispatch";
 import { resolveRouteForText } from "@/lib/router";
 
 export const runtime = "nodejs";
@@ -10,6 +10,17 @@ interface AgentRequestBody {
   mode?: "tool-calling" | "deterministic";
 }
 
+// If the local model hasn't produced a first token within this budget,
+// stop waiting on it and answer straight from vector/graph search instead
+// (item #5) — a caregiver companion shouldn't leave someone staring at a
+// blank screen for a slow model.
+const TOOL_CALLING_TIMEOUT_MS = 15_000;
+const TIMED_OUT = Symbol("timed-out");
+
+function timeoutAfter(ms: number): Promise<typeof TIMED_OUT> {
+  return new Promise((resolve) => setTimeout(() => resolve(TIMED_OUT), ms));
+}
+
 async function fallbackToDeterministic(message: string): Promise<Response> {
   try {
     const answer = await dispatchDeterministic(message);
@@ -17,6 +28,16 @@ async function fallbackToDeterministic(message: string): Promise<Response> {
   } catch (fallbackErr) {
     console.error("[api/agent] deterministic fallback also failed:", fallbackErr);
     return Response.json({ error: "Local model is unreachable. Is Ollama running?" }, { status: 503 });
+  }
+}
+
+async function fallbackToSemanticSearch(message: string): Promise<Response> {
+  try {
+    const answer = await directSemanticAnswer(message);
+    return Response.json({ answer, fallback: "semantic-search" });
+  } catch (fallbackErr) {
+    console.error("[api/agent] semantic-search fallback also failed:", fallbackErr);
+    return Response.json({ error: "Local memory search is unavailable right now." }, { status: 503 });
   }
 }
 
@@ -46,7 +67,11 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   try {
-    const streamed = await runMemoryAgent(message);
+    const streamed = await Promise.race([runMemoryAgent(message), timeoutAfter(TOOL_CALLING_TIMEOUT_MS)]);
+    if (streamed === TIMED_OUT) {
+      console.warn(`[api/agent] tool-calling path exceeded ${TOOL_CALLING_TIMEOUT_MS}ms, using direct semantic search`);
+      return fallbackToSemanticSearch(message);
+    }
     if (streamed) return streamed;
     console.warn("[api/agent] tool-calling path produced no output, falling back to deterministic dispatch");
   } catch (err) {
