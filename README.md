@@ -24,6 +24,27 @@ A dignity-preserving memory companion for people with mild cognitive impairment 
 | [docs/10-critical-review-and-revised-plan.md](docs/10-critical-review-and-revised-plan.md) | Adversarial re-review: re-verified assumptions, ranked gaps/contradictions, and a corrected implementation plan |
 | [docs/11-code-setup-plan.md](docs/11-code-setup-plan.md) | End-to-end code build plan: repo layout, deps, file responsibilities, and a build-blind order with per-step acceptance checks |
 
+## Running the app
+
+The code was written on Windows and is meant to run on the demo Mac (see
+[docs/11](docs/11-code-setup-plan.md)'s build-blind constraint) — Ollama and
+on-device Web Speech are Mac-only pieces. Everything else (Next.js, Neo4j,
+ChromaDB) is OS-neutral and can be brought up anywhere Docker + Node run.
+
+```bash
+cp .env.example .env.local        # fill in GEMINI_API_KEY for the cloud path (optional for local-only use)
+npm install
+docker compose up -d              # Neo4j + ChromaDB
+npm run check                     # health-check Ollama/Neo4j/ChromaDB
+npm run schema                    # Neo4j constraints + indexes
+npm run seed                      # demo fixture (graph always; vectors need Ollama reachable)
+npm run dev                       # http://localhost:3000
+```
+
+On the Mac, pull the models first: `ollama pull gemma4:12b` (or `gemma4:12b-mlx`
+on 32 GB+ machines, see doc 10) and `ollama pull embeddinggemma`. `scripts/services.sh`
+(Mac) / `scripts/services.ps1` (Windows dev) wrap the steps above into one command.
+
 ## Status of key assumptions (verified July 2026)
 
 - **Gemma 4** exists (released Apr 2, 2026), on-device sizes **E2B / E4B / 12B**. It is **multimodal** — text + image input, with audio input on E2B/E4B/12B; **text output only**.

@@ -1,0 +1,31 @@
+services:
+  neo4j:
+    image: neo4j:5
+    container_name: anchor-neo4j
+    ports:
+      - "7474:7474" # HTTP browser console
+      - "7687:7687" # Bolt driver
+    environment:
+      NEO4J_AUTH: neo4j/testpassword
+    volumes:
+      - ./data/neo4j:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: anchor-chroma
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/chroma:/data
+    healthcheck:
+      # The chromadb/chroma image has neither curl nor wget on PATH; bash's
+      # /dev/tcp pseudo-device (bash is present) avoids depending on either.
+      test: ["CMD-SHELL", "bash -c \"exec 3<>/dev/tcp/localhost/8000 && printf 'GET /api/v2/heartbeat HTTP/1.0\\r\\n\\r\\n' >&3 && timeout 2 cat <&3 | grep -q '200 OK'\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10

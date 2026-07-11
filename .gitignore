@@ -1,1 +1,28 @@
 .omo/
+
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# env
+.env
+.env.local
+.env.*.local
+
+# local data volumes (neo4j + chroma)
+/data/
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+.pnpm-debug.log*
+
+# typescript
+*.tsbuildinfo
