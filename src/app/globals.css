@@ -2,53 +2,53 @@
 
 /* ---------------------------------------------------------------------------
    Anchor — Material 3 (Material You) design tokens.
-   Calm teal primary + warm neutral surfaces, tuned for high legibility for
-   older users: large type, strong contrast, generous tap targets, but tight
-   whitespace so more fits on screen.
+   Warm beige / brown / white pastel palette + warm neutral surfaces, tuned
+   for high legibility for older users: large type, strong contrast,
+   generous tap targets, but tight whitespace so more fits on screen.
    --------------------------------------------------------------------------- */
 
 :root {
   /* Primary */
-  --md-primary: #256567;
-  --md-on-primary: #ffffff;
-  --md-primary-container: #b9ebeb;
-  --md-on-primary-container: #002020;
+  --md-primary: #6d4c33;
+  --md-on-primary: #fffaf5;
+  --md-primary-container: #ecd9bd;
+  --md-on-primary-container: #2b1a0a;
 
   /* Secondary / tertiary accents */
-  --md-secondary-container: #cce8e6;
-  --md-on-secondary-container: #051f1e;
-  --md-tertiary-container: #dbe2f9;
-  --md-on-tertiary-container: #131b2c;
+  --md-secondary-container: #ede0cc;
+  --md-on-secondary-container: #3a2c1a;
+  --md-tertiary-container: #ecdcd0;
+  --md-on-tertiary-container: #3a2620;
 
   /* Surfaces (warm neutrals) */
-  --md-surface: #f6faf8;
-  --md-surface-dim: #d6dbd9;
+  --md-surface: #fbf7f2;
+  --md-surface-dim: #e6ddd1;
   --md-surface-container-lowest: #ffffff;
-  --md-surface-container-low: #f0f5f3;
-  --md-surface-container: #eaefed;
-  --md-surface-container-high: #e4eae8;
-  --md-surface-container-highest: #dee4e2;
+  --md-surface-container-low: #f7f1e8;
+  --md-surface-container: #f2e9dc;
+  --md-surface-container-high: #ece0cf;
+  --md-surface-container-highest: #e6d9c4;
 
   /* Text on surfaces */
-  --md-on-surface: #161d1c;
-  --md-on-surface-variant: #3f4948;
-  --md-outline: #6f7977;
-  --md-outline-variant: #bec9c7;
+  --md-on-surface: #2b2117;
+  --md-on-surface-variant: #5c4d3d;
+  --md-outline: #8a7860;
+  --md-outline-variant: #d8c9b0;
 
   /* Status */
   --md-error: #ba1a1a;
   --md-on-error-container: #410002;
   --md-error-container: #ffdad6;
-  --md-success: #256a45;
+  --md-success: #4c6a2f;
 
   /* Node-type colors for the graph viewer */
-  --node-user: #256567;
-  --node-person: #6750a4;
-  --node-medication: #b3261e;
-  --node-routine: #7d5260;
-  --node-place: #3a6a1f;
-  --node-object: #8a5a00;
-  --node-episode: #5b6470;
+  --node-user: #6d4c33;
+  --node-person: #a56a55;
+  --node-medication: #a83e3e;
+  --node-routine: #8a5a72;
+  --node-place: #5a7a3a;
+  --node-object: #b8860b;
+  --node-episode: #8a7d6b;
 
   --background: var(--md-surface);
   --foreground: var(--md-on-surface);
@@ -61,41 +61,41 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --md-primary: #7fd6d6;
-    --md-on-primary: #003737;
-    --md-primary-container: #024e4f;
-    --md-on-primary-container: #b9ebeb;
+    --md-primary: #e8d3b0;
+    --md-on-primary: #3a2814;
+    --md-primary-container: #4a3420;
+    --md-on-primary-container: #f0dcc3;
 
-    --md-secondary-container: #324b4a;
-    --md-on-secondary-container: #cce8e6;
-    --md-tertiary-container: #3a4256;
-    --md-on-tertiary-container: #dbe2f9;
+    --md-secondary-container: #3d3226;
+    --md-on-secondary-container: #ede0cc;
+    --md-tertiary-container: #4a3630;
+    --md-on-tertiary-container: #ecdcd0;
 
-    --md-surface: #0e1514;
-    --md-surface-dim: #0e1514;
-    --md-surface-container-lowest: #090f0f;
-    --md-surface-container-low: #161d1c;
-    --md-surface-container: #1a2120;
-    --md-surface-container-high: #252b2a;
-    --md-surface-container-highest: #303635;
+    --md-surface: #1c1610;
+    --md-surface-dim: #1c1610;
+    --md-surface-container-lowest: #120d08;
+    --md-surface-container-low: #221b13;
+    --md-surface-container: #271f16;
+    --md-surface-container-high: #32281c;
+    --md-surface-container-highest: #3d3120;
 
-    --md-on-surface: #dee4e2;
-    --md-on-surface-variant: #bec9c7;
-    --md-outline: #889392;
-    --md-outline-variant: #3f4948;
+    --md-on-surface: #ede4d6;
+    --md-on-surface-variant: #cbbba0;
+    --md-outline: #9c8a70;
+    --md-outline-variant: #4d4030;
 
     --md-error: #ffb4ab;
     --md-on-error-container: #ffdad6;
     --md-error-container: #93000a;
-    --md-success: #7cdba4;
+    --md-success: #9bc27c;
 
-    --node-user: #7fd6d6;
-    --node-person: #cfbcff;
-    --node-medication: #ffb4ab;
-    --node-routine: #efb8c8;
-    --node-place: #a6d388;
-    --node-object: #f5bd6f;
-    --node-episode: #c1c8d5;
+    --node-user: #e8d3b0;
+    --node-person: #d9a583;
+    --node-medication: #e8a0a0;
+    --node-routine: #d9a8bc;
+    --node-place: #a3c47f;
+    --node-object: #e0b84a;
+    --node-episode: #c9bba5;
   }
 }
 
